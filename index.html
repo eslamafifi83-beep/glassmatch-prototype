@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GlassMatch Prototype</title>
+<meta name="description" content="Prototype: find the right windscreen from a rego or VIN in under a minute.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f6f9; --surface:#ffffff; --surface-2:#eef3f7; --border:#d9e2ea;
+  --text:#0f1d2b; --muted:#5b6b7b; --brand:#0e6e8c; --brand-ink:#ffffff; --brand-soft:#dff0f6;
+  --ok:#1d7a4b; --ok-soft:#e1f4ea; --warn:#9a5b00; --warn-soft:#fff2db; --bad:#b3261e; --bad-soft:#fde7e5;
+  --shadow:0 1px 2px rgba(15,29,43,.06),0 4px 16px rgba(15,29,43,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b141c; --surface:#121e29; --surface-2:#182735; --border:#24384a;
+  --text:#e6eef5; --muted:#93a6b8; --brand:#3fb3d6; --brand-ink:#05202b; --brand-soft:#123445;
+  --ok:#5fd394; --ok-soft:#123425; --warn:#f2b45a; --warn-soft:#3a2a10; --bad:#ff8a80; --bad-soft:#3b1a18;
+  --shadow:none;
+}}
+:root[data-theme="dark"]{
+  --bg:#0b141c; --surface:#121e29; --surface-2:#182735; --border:#24384a;
+  --text:#e6eef5; --muted:#93a6b8; --brand:#3fb3d6; --brand-ink:#05202b; --brand-soft:#123445;
+  --ok:#5fd394; --ok-soft:#123425; --warn:#f2b45a; --warn-soft:#3a2a10; --bad:#ff8a80; --bad-soft:#3b1a18;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:780px;margin:0 auto;padding:0 16px 48px}
+header{background:var(--surface);border-bottom:1px solid var(--border)}
+header .wrap{display:flex;align-items:center;gap:12px;padding-top:14px;padding-bottom:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--brand);display:grid;place-items:center;color:var(--brand-ink);font-weight:700}
+.title{font-weight:700;font-size:17px;line-height:1.2}
+.subtitle{color:var(--muted);font-size:13px}
+.pill{margin-left:auto;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
+.steps{display:flex;gap:8px;margin:20px 0 16px}
+.step{flex:1;padding:8px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-size:13px;color:var(--muted)}
+.step b{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.step.on{border-color:var(--brand);color:var(--text);box-shadow:inset 0 -3px 0 var(--brand)}
+.step.done{color:var(--ok)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h2{margin:0 0 4px;font-size:18px}
+.card h3{margin:0 0 10px;font-size:15px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.tabs{display:flex;gap:6px;margin:12px 0}
+.tab{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);cursor:pointer;font-weight:500}
+.tab.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row > *{flex:1 1 140px}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);outline:none}
+input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+input.plate{text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
+.btn.ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.5;cursor:default}
+.err{color:var(--bad);font-size:13px;margin-top:8px;min-height:1em}
+.samples{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:12px;padding:4px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);cursor:pointer}
+.chip:hover{border-color:var(--brand)}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.kv{background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.kv span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kv strong{font-size:14px;word-break:break-all}
+.alert{border-radius:10px;padding:10px 12px;font-size:13px;margin-top:12px}
+.alert.warn{background:var(--warn-soft);color:var(--warn)}
+.alert.ok{background:var(--ok-soft);color:var(--ok)}
+.alert.info{background:var(--brand-soft);color:var(--text)}
+.q{font-size:17px;font-weight:600;margin:4px 0}
+.answers{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.answers .btn{flex:1 1 110px}
+.cand{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:12px;margin-top:8px;background:var(--surface)}
+.cand.out{opacity:.45}
+.cand.win{border-color:var(--ok);box-shadow:0 0 0 2px var(--ok-soft)}
+.cand .code{font-family:ui-monospace,Consolas,monospace;font-weight:600}
+.cand .why{font-size:12px;color:var(--bad);margin-top:4px}
+.feat{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.f{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--surface-2);color:var(--muted)}
+.f.y{background:var(--brand-soft);color:var(--text)}
+.badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.badge.out{background:var(--bad-soft);color:var(--bad)}
+.badge.maybe{background:var(--surface-2);color:var(--muted)}
+.photo{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)}
+.result-code{font-family:ui-monospace,Consolas,monospace;font-size:24px;font-weight:700;margin:6px 0}
+ul.notes{margin:8px 0 0;padding-left:18px}
+pre.summary{white-space:pre-wrap;background:var(--surface-2);border-radius:10px;padding:12px;font-size:13px;margin:12px 0 0}
+.hidden{display:none}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+@media (max-width:520px){.step{font-size:12px;padding:6px 8px}.pill{display:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="logo">G</div>
+  <div><div class="title">GlassMatch</div><div class="subtitle">Right windscreen, first time</div></div>
+  <div class="pill">Prototype · sample data</div>
+</div></header>
+
+<div class="wrap">
+  <div class="steps">
+    <div class="step" id="s1"><b>Step 1</b>Find the car</div>
+    <div class="step" id="s2"><b>Step 2</b>Narrow it down</div>
+    <div class="step" id="s3"><b>Step 3</b>Confirm part</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <section id="search" class="card">
+    <h2>Find the customer's car</h2>
+    <div class="muted small">Ask for the rego and state. Use the VIN if the customer has it.</div>
+    <div class="tabs">
+      <button class="tab on" data-mode="rego">Rego</button>
+      <button class="tab" data-mode="vin">VIN</button>
+    </div>
+    <form id="form">
+      <div class="row" id="regoRow">
+        <select id="state" aria-label="State">
+          <option>NSW</option><option>VIC</option><option>QLD</option><option>WA</option>
+          <option>SA</option><option>TAS</option><option>ACT</option><option>NT</option>
+        </select>
+        <input id="plate" class="plate" placeholder="Rego e.g. CXA22B" autocomplete="off" aria-label="Rego">
+        <button class="btn" type="submit">Look up</button>
+      </div>
+      <div class="row hidden" id="vinRow">
+        <input id="vin" class="plate" placeholder="17-character VIN" maxlength="17" autocomplete="off" aria-label="VIN">
+        <button class="btn" type="submit">Look up</button>
+      </div>
+    </form>
+    <div class="err" id="err"></div>
+    <div class="small muted">Try a sample car:</div>
+    <div class="samples" id="samples"></div>
+  </section>
+
+  <!-- STEP 2/3 -->
+  <section id="work" class="hidden">
+    <div class="card" id="vehicleCard"></div>
+    <div class="card" id="questionCard"></div>
+    <div class="card" id="candCard"></div>
+    <div class="row" style="margin-top:4px"><button class="btn ghost" id="restart">← New lookup</button></div>
+  </section>
+
+  <footer>Prototype for demonstration. Cars, VINs, part codes and history notes are illustrative sample data, not real catalogue data.</footer>
+</div>
+
+<script>
+// ---------- Sample data (illustrative only) ----------
+const FEATURES = {
+  adas:     {label:"ADAS camera", q:"Is there a camera behind the rear-view mirror?", hint:"Black housing at the top centre of the windscreen. Lane-keep / auto-braking cars have it."},
+  rain:     {label:"Rain/light sensor", q:"Is there a rain or light sensor behind the mirror?", hint:"Small pad touching the glass. Wipers or headlights switch on by themselves."},
+  heated:   {label:"Heated wiper area", q:"Does the windscreen have a heated wiper rest area?", hint:"Fine wires along the bottom of the glass, or a windscreen-heat button."},
+  acoustic: {label:"Acoustic", q:"Does the glass say \"Acoustic\" or show an ear symbol?", hint:"Printed in the corner marking of the windscreen."},
+  hud:      {label:"Head-up display", q:"Does the car project speed onto the windscreen?", hint:"Head-up display (HUD). Usually top-spec models only."}
+};
+
+const VEHICLES = [
+  { state:"NSW", plate:"CXA22B", vin:"JTMW43FV10D123456", make:"Toyota", model:"RAV4", variant:"GXL Hybrid 2WD", series:"AXAH52", body:"Wagon", build:"2021-03", compliance:"2021-05",
+    history:"Last 6 months: 14 wrong windscreens sent for RAV4 2019–2022. Most common mistake: GXL ordered without the rain sensor.",
+    photoMatch:"6542AGSACMVZ",
+    cands:[
+      {code:"6542AGSCMVZ",  name:"RAV4 XA50 windscreen — camera", f:{adas:1,rain:0,heated:0,acoustic:0,hud:0}, from:"2019-04", to:null},
+      {code:"6542AGSACMVZ", name:"RAV4 XA50 windscreen — camera + sensor", f:{adas:1,rain:1,heated:0,acoustic:0,hud:0}, from:"2019-04", to:null},
+      {code:"6542AGSHACMVZ",name:"RAV4 XA50 windscreen — camera + sensor + heated", f:{adas:1,rain:1,heated:1,acoustic:0,hud:0}, from:"2019-04", to:null},
+      {code:"6542AGSHACHVZ",name:"RAV4 XA50 windscreen — camera + sensor + heated + HUD", f:{adas:1,rain:1,heated:1,acoustic:1,hud:1}, from:"2022-01", to:null},
+      {code:"6431AGNCMVZ",  name:"RAV4 XA40 windscreen (previous shape)", f:{adas:1,rain:0,heated:0,acoustic:0,hud:0}, from:"2016-01", to:"2019-03"}
+    ]},
+  { state:"VIC", plate:"1QR7FT", vin:"JTNK4RBE30J654321", make:"Toyota", model:"Corolla", variant:"Ascent Sport Hatch", series:"MZEA12R", body:"Hatchback", build:"2018-07", compliance:"2018-08",
+    history:"Watch the build date: Corollas built before Aug 2018 use the earlier camera bracket.",
+    photoMatch:"6436AGNCMV1B",
+    cands:[
+      {code:"6436AGNCMV1B", name:"Corolla E210 hatch windscreen — camera (early bracket)", f:{adas:1,rain:0,heated:0,acoustic:0,hud:0}, from:"2018-05", to:"2018-07"},
+      {code:"6436AGNCMV2B", name:"Corolla E210 hatch windscreen — camera (revised bracket)", f:{adas:1,rain:0,heated:0,acoustic:0,hud:0}, from:"2018-08", to:null},
+      {code:"6436AGSACMV2B",name:"Corolla E210 hatch windscreen — camera + sensor + acoustic", f:{adas:1,rain:1,heated:0,acoustic:1,hud:0}, from:"2018-08", to:null},
+      {code:"6436AGNMV",    name:"Corolla E210 hatch windscreen — no camera", f:{adas:0,rain:0,heated:0,acoustic:0,hud:0}, from:"2018-05", to:null}
+    ]},
+  { state:"QLD", plate:"829KLM", vin:"MR0HA3CD100987654", make:"Toyota", model:"HiLux", variant:"SR5 4x4 Double Cab", series:"GUN126R", body:"Ute", build:"2017-09", compliance:"2017-10",
+    history:"Pre-facelift HiLux: no ADAS camera, so no recalibration needed.",
+    photoMatch:"6461AGSMVZ",
+    cands:[
+      {code:"6461AGNMVZ",  name:"HiLux AN120 windscreen — plain", f:{adas:0,rain:0,heated:0,acoustic:0,hud:0}, from:"2015-07", to:null},
+      {code:"6461AGSMVZ",  name:"HiLux AN120 windscreen — rain sensor", f:{adas:0,rain:1,heated:0,acoustic:0,hud:0}, from:"2015-07", to:null},
+      {code:"6461AGSCMVZ", name:"HiLux AN120 windscreen — camera + sensor (facelift)", f:{adas:1,rain:1,heated:0,acoustic:0,hud:0}, from:"2018-05", to:null}
+    ]},
+  { state:"WA", plate:"1HGT520", vin:"JMZKF4W7A00246810", make:"Mazda", model:"CX-5", variant:"Maxx Sport", series:"KF", body:"Wagon", build:"2020-02", compliance:"2020-03",
+    history:"CX-5 GT and Akera have a head-up display. Maxx Sport usually does not, but check.",
+    photoMatch:"7287AGSACMVZ",
+    cands:[
+      {code:"7287AGSACMVZ", name:"CX-5 KF windscreen — camera + sensor", f:{adas:1,rain:1,heated:0,acoustic:0,hud:0}, from:"2017-02", to:null},
+      {code:"7287AGSACHMVZ",name:"CX-5 KF windscreen — camera + sensor + HUD", f:{adas:1,rain:1,heated:0,acoustic:1,hud:1}, from:"2017-02", to:null},
+      {code:"7287AGSHACMVZ",name:"CX-5 KF windscreen — camera + sensor + heated", f:{adas:1,rain:1,heated:1,acoustic:0,hud:0}, from:"2017-02", to:null}
+    ]}
+];
+
+// ---------- State ----------
+let mode = "rego", V = null, status = {}, asked = [], skipped = [], photoUsed = false;
+const $ = id => document.getElementById(id);
+const fmtDate = ym => { const [y,m] = ym.split("-"); return new Date(+y, +m-1).toLocaleString("en-AU",{month:"short",year:"numeric"}); };
+
+// ---------- Step 1 ----------
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  mode = t.dataset.mode;
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === t));
+  $("regoRow").classList.toggle("hidden", mode !== "rego");
+  $("vinRow").classList.toggle("hidden", mode !== "vin");
+  $("err").textContent = "";
+});
+VEHICLES.forEach(v => {
+  const c = document.createElement("button");
+  c.type = "button"; c.className = "chip";
+  c.textContent = `${v.state} ${v.plate} · ${v.make} ${v.model}`;
+  c.onclick = () => { $("state").value = v.state; $("plate").value = v.plate; mode = "rego"; document.querySelector('[data-mode="rego"]').click(); lookup(); };
+  $("samples").appendChild(c);
+});
+$("form").onsubmit = e => { e.preventDefault(); lookup(); };
+$("restart").onclick = () => { $("work").classList.add("hidden"); $("search").classList.remove("hidden"); setStep(1); $("plate").focus(); };
+
+function lookup(){
+  const plate = $("plate").value.trim().toUpperCase().replace(/\s+/g,"");
+  const vin = $("vin").value.trim().toUpperCase();
+  const v = mode === "rego"
+    ? VEHICLES.find(x => x.plate === plate && x.state === $("state").value)
+    : VEHICLES.find(x => x.vin === vin);
+  if (!v){ $("err").textContent = mode === "rego" ? "No car found for that rego in the sample data. Try one of the sample cars below." : "No car found for that VIN in the sample data."; return; }
+  $("err").textContent = "";
+  start(v);
+}
+
+// ---------- Step 2 ----------
+function start(v){
+  V = v; asked = []; skipped = []; photoUsed = false; status = {};
+  // Build date filter happens automatically
+  v.cands.forEach(c => {
+    if (c.from && v.build < c.from) status[c.code] = `Built ${fmtDate(v.build)}, part fits from ${fmtDate(c.from)}`;
+    else if (c.to && v.build > c.to) status[c.code] = `Built ${fmtDate(v.build)}, part fits until ${fmtDate(c.to)}`;
+  });
+  $("search").classList.add("hidden");
+  $("work").classList.remove("hidden");
+  renderVehicle(); render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+const remaining = () => V.cands.filter(c => !status[c.code]);
+function nextFeature(){
+  const r = remaining();
+  return Object.keys(FEATURES).find(k => !asked.includes(k) && !skipped.includes(k) && new Set(r.map(c => c.f[k])).size > 1);
+}
+
+function answer(k, val){
+  if (val === null){ skipped.push(k); render(); return; }
+  asked.push(k);
+  remaining().forEach(c => { if (!!c.f[k] !== val) status[c.code] = `${FEATURES[k].label}: customer said ${val ? "yes" : "no"}`; });
+  render();
+}
+
+function usePhoto(){
+  photoUsed = true;
+  $("photoMsg").textContent = "Reading the code printed on the glass…";
+  setTimeout(() => {
+    remaining().forEach(c => { if (c.code !== V.photoMatch) status[c.code] = `Photo shows code ${V.photoMatch}`; });
+    render();
+  }, 1200);
+}
+
+function setStep(n){
+  [1,2,3].forEach(i => { const s = $("s"+i); s.classList.toggle("on", i === n); s.classList.toggle("done", i < n); });
+}
+
+function renderVehicle(){
+  $("vehicleCard").innerHTML = `
+    <h2>${V.make} ${V.model} ${V.variant}</h2>
+    <div class="muted small">${V.state} rego ${V.plate} · found via national vehicle register (sample)</div>
+    <div class="vgrid">
+      <div class="kv"><span>VIN</span><strong>${V.vin}</strong></div>
+      <div class="kv"><span>Series</span><strong>${V.series}</strong></div>
+      <div class="kv"><span>Body</span><strong>${V.body}</strong></div>
+      <div class="kv"><span>Build date</span><strong>${fmtDate(V.build)}</strong></div>
+      <div class="kv"><span>Compliance</span><strong>${fmtDate(V.compliance)}</strong></div>
+    </div>
+    <div class="alert warn">⚠ ${V.history}</div>`;
+}
+
+function render(){
+  const r = remaining(), k = nextFeature(), done = r.length === 1;
+  setStep(done ? 3 : 2);
+  const qc = $("questionCard");
+  if (done){
+    const c = r[0], notes = [];
+    if (c.f.adas) notes.push("<b>ADAS camera recalibration required</b> after fitting. Book calibration with the job.");
+    if (c.f.rain) notes.push("Transfer or replace the rain-sensor gel pad.");
+    if (c.f.hud) notes.push("HUD glass: check the image for double vision after fitting.");
+    if (c.f.heated) notes.push("Reconnect the heated-screen terminals.");
+    if (!notes.length) notes.push("Standard fit. No sensors or camera to transfer.");
+    const how = photoUsed ? "Confirmed by photo of the glass marking" : asked.length ? `Confirmed by build date + ${asked.length} question${asked.length>1?"s":""}` : "Only one windscreen fits this build date";
+    const summary = `ORDER – WINDSCREEN
+Vehicle: ${V.make} ${V.model} ${V.variant} (${V.series})
+Rego: ${V.state} ${V.plate}   VIN: ${V.vin}
+Built: ${fmtDate(V.build)}
+Part: ${c.code} – ${c.name}
+Check: ${how}
+ADAS recalibration: ${c.f.adas ? "YES" : "No"}`;
+    qc.innerHTML = `
+      <span class="badge ok">MATCH FOUND</span>
+      <div class="result-code">${c.code}</div>
+      <div>${c.name}</div>
+      <div class="alert ok">✓ ${how}</div>
+      <h3 style="margin-top:14px">Fitter notes</h3>
+      <ul class="notes">${notes.map(n => `<li>${n}</li>`).join("")}</ul>
+      <pre class="summary" id="summary">${summary}</pre>
+      <div class="answers">
+        <button class="btn" id="copyBtn">Copy order summary</button>
+        <button class="btn ghost" id="restart2">Start again with this car</button>
+      </div>`;
+    $("copyBtn").onclick = () => { navigator.clipboard?.writeText(summary).then(() => $("copyBtn").textContent = "Copied ✓", () => {}); };
+    $("restart2").onclick = () => start(V);
+  } else if (r.length === 0){
+    qc.innerHTML = `<span class="badge out">NO MATCH</span>
+      <div class="q">None of the windscreens match those answers.</div>
+      <div class="muted small">An answer may be wrong. Start again, or ask the customer for a photo of the glass.</div>
+      <div class="answers"><button class="btn" id="again">Start again with this car</button></div>`;
+    $("again").onclick = () => start(V);
+  } else {
+    const photo = `
+      <div class="photo">
+        <div style="flex:1 1 220px"><b>Quicker: photo of the glass</b><div class="muted small">Customer texts a photo of the code in the windscreen corner. The app reads it. (Simulated in this prototype.)</div><div class="small" id="photoMsg"></div></div>
+        <label class="btn ghost" style="cursor:pointer">Upload photo<input type="file" accept="image/*" capture="environment" class="hidden" id="photoIn"></label>
+      </div>`;
+    if (k){
+      const F = FEATURES[k];
+      qc.innerHTML = `
+        <div class="muted small">Question ${asked.length + skipped.length + 1} · ${r.length} windscreens still possible</div>
+        <div class="q">${F.q}</div>
+        <div class="muted small">${F.hint}</div>
+        <div class="answers">
+          <button class="btn" data-a="1">Yes</button>
+          <button class="btn" data-a="0">No</button>
+          <button class="btn ghost" data-a="x">Not sure</button>
+        </div>${photo}`;
+      qc.querySelectorAll("[data-a]").forEach(b => b.onclick = () => answer(k, b.dataset.a === "x" ? null : b.dataset.a === "1"));
+    } else {
+      qc.innerHTML = `
+        <div class="muted small">${r.length} windscreens still possible</div>
+        <div class="q">Questions can't separate these. Ask for a photo of the glass.</div>
+        <div class="muted small">They may differ only by bracket or supplier. The code printed on the glass settles it.</div>${photo}`;
+    }
+    $("photoIn").onchange = e => { if (e.target.files.length) usePhoto(); };
+  }
+  renderCands();
+}
+
+function renderCands(){
+  const sorted = [...V.cands].sort((a,b) => !!status[a.code] - !!status[b.code]);
+  const win = remaining().length === 1 ? remaining()[0].code : null;
+  $("candCard").innerHTML = `
+    <h3>Windscreens for this model (${V.cands.length})</h3>
+    <div class="muted small">Ruled out automatically by build date, then by the customer's answers.</div>
+    ${sorted.map(c => {
+      const out = status[c.code];
+      const feats = Object.keys(FEATURES).map(k => `<span class="f ${c.f[k] ? "y" : ""}">${c.f[k] ? "✓" : "–"} ${FEATURES[k].label}</span>`).join("");
+      const badge = c.code === win ? `<span class="badge ok">MATCH</span>` : out ? `<span class="badge out">RULED OUT</span>` : `<span class="badge maybe">POSSIBLE</span>`;
+      return `<div class="cand ${out ? "out" : ""} ${c.code === win ? "win" : ""}">
+        <div style="flex:1;min-width:0">
+          <div class="code">${c.code}</div>
+          <div class="small">${c.name}</div>
+          <div class="feat">${feats}</div>
+          ${out ? `<div class="why">${out}</div>` : ""}
+        </div>${badge}</div>`;
+    }).join("")}`;
+}
+
+setStep(1);
+</script>
+</body>
+</html>
